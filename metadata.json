@@ -1,0 +1,6 @@
+{
+  "name": "Escalada Numérica",
+  "description": "Jogo de adivinhar atalhos e armadilhas num painel de 1 a 100 com níveis em pirâmide, com emissão de gabarito prévio via WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
