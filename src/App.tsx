@@ -156,7 +156,44 @@ export default function App() {
         osc.stop(t + 4*step);
     };
 
-    const triggerScare = () => {
+    const triggerLaughSound = () => {
+        if (!audioCtxRef.current) return;
+        const ctx = audioCtxRef.current;
+        const t = ctx.currentTime + 1.0; // Começa 1 segundo após a derrota
+        
+        // Risada maléfica mais alta (Ha ha ha)
+        const syllables = 6;
+        for (let i = 0; i < syllables; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+            
+            // Mistura mais forte para a voz
+            osc.type = 'square';
+            
+            const startFreq = 160 - (i * 8);
+            const timeStart = t + i * 0.25;
+            
+            osc.frequency.setValueAtTime(startFreq, timeStart);
+            osc.frequency.exponentialRampToValueAtTime(startFreq * 0.6, timeStart + 0.15);
+            
+            filter.type = 'lowpass';
+            filter.frequency.value = 1200;
+            
+            gain.gain.setValueAtTime(0, timeStart);
+            gain.gain.linearRampToValueAtTime(1.0, timeStart + 0.05); // Volume mais forte
+            gain.gain.exponentialRampToValueAtTime(0.01, timeStart + 0.2);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(timeStart);
+            osc.stop(timeStart + 0.25);
+        }
+    };
+
+    const triggerScare = (isFatal = false) => {
         setLightning(true);
         setTimeout(() => setLightning(false), 50);
         setTimeout(() => {
@@ -164,7 +201,12 @@ export default function App() {
             setTimeout(() => setLightning(false), 50);
         }, 120);
         
-        if (musicPlaying) triggerDefeatSound();
+        if (musicPlaying) {
+            triggerDefeatSound();
+            if (isFatal) {
+                triggerLaughSound(); // Já está com o delay interno
+            }
+        }
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,7 +342,7 @@ export default function App() {
             }, 1500);
         } else if (type === 'lose_all') {
             setIsTransitioning(true);
-            triggerScare();
+            triggerScare(true); // Caveira = susto fatal com risada
             pushLog(`☠️ ABISMO FATAL: Número ${num} destruiu seu caminho. Retornando à estaca zero (Nível 1)!`, 'error');
             setTimeout(() => {
                 setCurrentLevel(1);
