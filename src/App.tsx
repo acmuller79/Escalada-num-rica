@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Share2, Play, RefreshCw, ArrowUp, ArrowDown, Trophy, X, ChevronRight, Skull, ChevronsDown, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Share2, Play, RefreshCw, ArrowUp, ArrowDown, Trophy, X, ChevronRight, Skull, ChevronsDown, Lock, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type CellType = 'advance' | 'fallback' | 'neutral' | 'winner' | 'lose_all' | 'lose_half';
@@ -20,6 +20,82 @@ export default function App() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [bgImage, setBgImage] = useState<string | null>(() => localStorage.getItem('escalada_bg') || null);
+    
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const [musicPlaying, setMusicPlaying] = useState(false);
+    const [lightning, setLightning] = useState(false);
+
+    const toggleMusic = () => {
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = audioCtxRef.current.createOscillator();
+            const gain = audioCtxRef.current.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(55, audioCtxRef.current.currentTime);
+            
+            const lfo = audioCtxRef.current.createOscillator();
+            lfo.type = 'sine';
+            lfo.frequency.value = 0.5;
+            const lfoGain = audioCtxRef.current.createGain();
+            lfoGain.gain.value = 0.15;
+            lfo.connect(lfoGain);
+            lfoGain.connect(gain.gain);
+            
+            gain.gain.value = 0.2;
+            
+            osc.connect(gain);
+            gain.connect(audioCtxRef.current.destination);
+            
+            osc.start();
+            lfo.start();
+        }
+        
+        if (audioCtxRef.current.state === 'suspended' || !musicPlaying) {
+            audioCtxRef.current.resume();
+            setMusicPlaying(true);
+        } else {
+            audioCtxRef.current.suspend();
+            setMusicPlaying(false);
+        }
+    };
+
+    const triggerThunder = () => {
+        if (!audioCtxRef.current) return;
+        const bufferSize = audioCtxRef.current.sampleRate * 2;
+        const buffer = audioCtxRef.current.createBuffer(1, bufferSize, audioCtxRef.current.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = audioCtxRef.current.createBufferSource();
+        noise.buffer = buffer;
+        
+        const filter = audioCtxRef.current.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, audioCtxRef.current.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(10, audioCtxRef.current.currentTime + 2);
+
+        const gain = audioCtxRef.current.createGain();
+        gain.gain.setValueAtTime(0.6, audioCtxRef.current.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtxRef.current.currentTime + 2);
+        
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtxRef.current.destination);
+        
+        noise.start();
+    };
+
+    const triggerScare = () => {
+        setLightning(true);
+        setTimeout(() => setLightning(false), 50);
+        setTimeout(() => {
+            setLightning(true);
+            setTimeout(() => setLightning(false), 50);
+        }, 120);
+        
+        if (musicPlaying) triggerThunder();
+    };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -136,6 +212,7 @@ export default function App() {
             }, 1000);
         } else if (type === 'fallback') {
             setIsTransitioning(true);
+            triggerScare();
             const nextLevel = Math.max(1, currentLevel - 1);
             pushLog(`🔻 ARMADILHA: Número ${num} escorregadio! Retornando ao Nível ${nextLevel}.`, 'warning');
             setTimeout(() => {
@@ -144,6 +221,7 @@ export default function App() {
             }, 1200);
         } else if (type === 'lose_half') {
             setIsTransitioning(true);
+            triggerScare();
             const nextLevel = Math.max(1, Math.ceil(currentLevel / 2));
             pushLog(`📉 QUEDA CRÍTICA: Número ${num} fez você perder metade do progresso! Indo pro Nível ${nextLevel}.`, 'error');
             setTimeout(() => {
@@ -152,6 +230,7 @@ export default function App() {
             }, 1500);
         } else if (type === 'lose_all') {
             setIsTransitioning(true);
+            triggerScare();
             pushLog(`☠️ ABISMO FATAL: Número ${num} destruiu seu caminho. Retornando à estaca zero (Nível 1)!`, 'error');
             setTimeout(() => {
                 setCurrentLevel(1);
@@ -195,10 +274,24 @@ export default function App() {
                 className="absolute inset-0 z-0 opacity-10 pointer-events-none bg-center bg-no-repeat bg-cover bg-fixed"
                 style={{ backgroundImage: bgImage ? `url(${bgImage})` : 'none' }}
             />
+            {/* Lightning Flash */}
+            {lightning && (
+                <div className="fixed inset-0 bg-white z-[100] pointer-events-none opacity-80 mix-blend-overlay animate-pulse" />
+            )}
+            
             {/* Header */}
             <header className="bg-slate-900/80 backdrop-blur-md border-b border-white/5 py-4 px-6 flex flex-col items-center justify-center shadow-lg relative z-10">
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 via-indigo-500/10 to-teal-500/10 pointer-events-none"></div>
-                <div className="flex items-center justify-center relative z-10">
+                
+                <button 
+                    onClick={toggleMusic}
+                    className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all border border-slate-700/50"
+                    title={musicPlaying ? "Pausar música" : "Tocar música"}
+                >
+                    {musicPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                </button>
+
+                <div className="flex items-center justify-center relative z-10 mt-1">
                     <Trophy className="text-amber-400 mr-3 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" size={28} />
                     <h1 className="font-extrabold text-2xl tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-indigo-300 to-teal-300 drop-shadow-sm">
                         Escalada Numérica
