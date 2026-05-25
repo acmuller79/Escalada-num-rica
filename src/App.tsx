@@ -28,26 +28,89 @@ export default function App() {
     const toggleMusic = () => {
         if (!audioCtxRef.current) {
             audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = audioCtxRef.current.createOscillator();
-            const gain = audioCtxRef.current.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(55, audioCtxRef.current.currentTime);
+            const ctx = audioCtxRef.current;
             
-            const lfo = audioCtxRef.current.createOscillator();
+            // --- PAD / DRONE (Suspense) ---
+            const createDrone = (freq: number) => {
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 200;
+                
+                const gain = ctx.createGain();
+                gain.gain.value = 0.05;
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                return { filter };
+            };
+            
+            const drone1 = createDrone(55); // A1
+            const drone2 = createDrone(82.41); // E2
+            
+            const lfo = ctx.createOscillator();
             lfo.type = 'sine';
-            lfo.frequency.value = 0.5;
-            const lfoGain = audioCtxRef.current.createGain();
-            lfoGain.gain.value = 0.15;
+            lfo.frequency.value = 0.05;
+            const lfoGain = ctx.createGain();
+            lfoGain.gain.value = 100;
             lfo.connect(lfoGain);
-            lfoGain.connect(gain.gain);
-            
-            gain.gain.value = 0.2;
-            
-            osc.connect(gain);
-            gain.connect(audioCtxRef.current.destination);
-            
-            osc.start();
+            lfoGain.connect(drone1.filter.frequency);
+            lfoGain.connect(drone2.filter.frequency);
             lfo.start();
+            
+            // --- PIANO / PLUCK ---
+            const playPluck = () => {
+                if (ctx.state !== 'running') return;
+                const osc = ctx.createOscillator();
+                osc.type = 'square';
+                const notes = [220, 261.63, 329.63, 349.23];
+                osc.frequency.value = notes[Math.floor(Math.random() * notes.length)];
+                
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 800;
+                filter.Q.value = 2;
+                
+                const gain = ctx.createGain();
+                const t = ctx.currentTime;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.08, t + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 3);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 3);
+            };
+            
+            // --- HEARTBEAT ---
+            const playDrum = () => {
+                if (ctx.state !== 'running') return;
+                const t = ctx.currentTime;
+                const bd = ctx.createOscillator();
+                const bdGain = ctx.createGain();
+                bd.type = 'sine';
+                bd.frequency.setValueAtTime(60, t);
+                bd.frequency.exponentialRampToValueAtTime(10, t + 0.3);
+                bdGain.gain.setValueAtTime(0.5, t);
+                bdGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                bd.connect(bdGain);
+                bdGain.connect(ctx.destination);
+                bd.start(t);
+                bd.stop(t + 0.3);
+            };
+
+            window.setInterval(playPluck, 3000);
+            window.setInterval(() => {
+                playDrum();
+                setTimeout(playDrum, 300);
+            }, 2000);
         }
         
         if (audioCtxRef.current.state === 'suspended' || !musicPlaying) {
@@ -59,31 +122,38 @@ export default function App() {
         }
     };
 
-    const triggerThunder = () => {
+    const triggerDefeatSound = () => {
         if (!audioCtxRef.current) return;
-        const bufferSize = audioCtxRef.current.sampleRate * 2;
-        const buffer = audioCtxRef.current.createBuffer(1, bufferSize, audioCtxRef.current.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        const noise = audioCtxRef.current.createBufferSource();
-        noise.buffer = buffer;
+        const ctx = audioCtxRef.current;
+        const t = ctx.currentTime;
         
-        const filter = audioCtxRef.current.createBiquadFilter();
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        
+        const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(800, audioCtxRef.current.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(10, audioCtxRef.current.currentTime + 2);
-
-        const gain = audioCtxRef.current.createGain();
-        gain.gain.setValueAtTime(0.6, audioCtxRef.current.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtxRef.current.currentTime + 2);
         
-        noise.connect(filter);
+        const gain = ctx.createGain();
+        
+        osc.connect(filter);
         filter.connect(gain);
-        gain.connect(audioCtxRef.current.destination);
+        gain.connect(ctx.destination);
         
-        noise.start();
+        const freqs = [150, 140, 130, 90];
+        const step = 0.4;
+        
+        for(let i=0; i<4; i++) {
+            osc.frequency.setValueAtTime(freqs[i], t + i*step);
+            gain.gain.setValueAtTime(0, t + i*step);
+            gain.gain.linearRampToValueAtTime(0.4, t + i*step + 0.05);
+            gain.gain.setTargetAtTime(0.001, t + i*step + 0.3, 0.1);
+            
+            filter.frequency.setValueAtTime(800, t + i*step);
+            filter.frequency.setTargetAtTime(100, t + i*step + 0.3, 0.1);
+        }
+        
+        osc.start(t);
+        osc.stop(t + 4*step);
     };
 
     const triggerScare = () => {
@@ -94,7 +164,7 @@ export default function App() {
             setTimeout(() => setLightning(false), 50);
         }, 120);
         
-        if (musicPlaying) triggerThunder();
+        if (musicPlaying) triggerDefeatSound();
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
