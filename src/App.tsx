@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Play, RefreshCw, ArrowUp, ArrowDown, Trophy, X, ChevronRight, Skull, ChevronsDown, Lock, ImagePlus } from 'lucide-react';
+import { Share2, Play, RefreshCw, ArrowUp, ArrowDown, Trophy, X, ChevronRight, Skull, ChevronsDown, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type CellType = 'advance' | 'fallback' | 'neutral' | 'winner' | 'lose_all' | 'lose_half';
@@ -64,11 +64,9 @@ export default function App() {
                 for (let i = 8; i < 10; i++) newBoard[nums[i]] = 'neutral';
             } else {
                 newBoard[nums[0]] = 'winner';
-                for (let i = 1; i < 4; i++) newBoard[nums[i]] = 'fallback';
-                newBoard[nums[4]] = 'lose_half';
-                newBoard[nums[5]] = 'lose_all';
-                newBoard[nums[6]] = 'lose_all';
-                for (let i = 7; i < 10; i++) newBoard[nums[i]] = 'neutral';
+                for (let i = 1; i < 3; i++) newBoard[nums[i]] = 'fallback';
+                for (let i = 3; i < 6; i++) newBoard[nums[i]] = 'lose_half';
+                for (let i = 6; i < 10; i++) newBoard[nums[i]] = 'lose_all';
             }
         }
 
@@ -206,7 +204,7 @@ export default function App() {
                         Escalada Numérica
                     </h1>
                 </div>
-                <div className="font-bold text-[10px] tracking-[0.2em] text-slate-400 uppercase mt-1 relative z-10">
+                <div className="font-bold text-xs sm:text-sm tracking-[0.25em] text-slate-300 uppercase mt-2 relative z-10">
                     AcmullerSa
                 </div>
             </header>
@@ -234,17 +232,7 @@ export default function App() {
                                 <Play size={20} /> Iniciar Jogo
                             </button>
 
-                            <div className="mt-6 pt-6 border-t border-slate-800/50 relative z-10 flex flex-col items-center">
-                                <label className="cursor-pointer text-sm font-bold text-slate-400 hover:text-indigo-400 transition-colors flex items-center justify-center gap-2">
-                                    <ImagePlus size={18} /> Personalizar Fundo de Tela com sua Marca
-                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                                </label>
-                                {bgImage && (
-                                    <button onClick={() => { setBgImage(null); localStorage.removeItem('escalada_bg'); }} className="text-xs font-bold text-rose-500 mt-3 hover:underline">
-                                        Remover Imagem de Fundo
-                                    </button>
-                                )}
-                            </div>
+
                         </motion.div>
                     )}
 
