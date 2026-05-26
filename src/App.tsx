@@ -21,6 +21,33 @@ export default function App() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [bgImage, setBgImage] = useState<string | null>(() => localStorage.getItem('escalada_bg') || null);
     
+    // PWA Install Prompt
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: any) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallBtn(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            setDeferredPrompt(null);
+            setShowInstallBtn(false);
+        }
+    };
+    
     const audioCtxRef = useRef<AudioContext | null>(null);
     const [musicPlaying, setMusicPlaying] = useState(false);
     const [lightning, setLightning] = useState(false);
@@ -392,16 +419,26 @@ export default function App() {
             )}
             
             {/* Header */}
-            <header className="bg-slate-900/80 backdrop-blur-md border-b border-white/5 py-4 px-6 flex flex-col items-center justify-center shadow-lg relative z-10">
+            <header className="bg-slate-900/80 backdrop-blur-md border-b border-white/5 py-4 px-6 flex flex-col items-center justify-center shadow-lg relative z-10 w-full">
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 via-indigo-500/10 to-teal-500/10 pointer-events-none"></div>
                 
-                <button 
-                    onClick={toggleMusic}
-                    className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all border border-slate-700/50"
-                    title={musicPlaying ? "Pausar música" : "Tocar música"}
-                >
-                    {musicPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
-                </button>
+                <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex items-center justify-center gap-2">
+                    {showInstallBtn && (
+                        <button
+                            onClick={handleInstallClick}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform"
+                        >
+                            Instalar App
+                        </button>
+                    )}
+                    <button 
+                        onClick={toggleMusic}
+                        className="p-2 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all border border-slate-700/50"
+                        title={musicPlaying ? "Pausar música" : "Tocar música"}
+                    >
+                        {musicPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                    </button>
+                </div>
 
                 <div className="flex items-center justify-center relative z-10 mt-1">
                     <Trophy className="text-amber-400 mr-3 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" size={28} />
