@@ -23,13 +23,14 @@ export default function App() {
     
     // PWA Install Prompt
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [showInstallBtn, setShowInstallBtn] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
+        setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+        
         const handleBeforeInstallPrompt = (e: any) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            setShowInstallBtn(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -44,7 +45,8 @@ export default function App() {
                 console.log('User accepted the install prompt');
             }
             setDeferredPrompt(null);
-            setShowInstallBtn(false);
+        } else {
+            alert('Para instalar o App:\n\n📱 No Android (Chrome): Toque nos 3 pontinhos no canto superior e selecione "Adicionar à tela inicial" ou "Instalar aplicativo".\n\n🍏 No iPhone (Safari): Toque no ícone de Compartilhar (quadrado com seta para cima) na parte inferior e selecione "Adicionar à Tela de Início".');
         }
     };
     
@@ -466,7 +468,7 @@ export default function App() {
                                 <Play size={20} /> Iniciar Jogo
                             </button>
 
-                            {showInstallBtn && (
+                            {!isStandalone && (
                                 <button
                                     onClick={handleInstallClick}
                                     className="w-full mt-4 relative z-10 py-4 rounded-2xl text-sm font-bold bg-slate-800 text-white hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 hover:border-slate-600"
@@ -584,7 +586,7 @@ export default function App() {
                                         <Trophy size={18} className="text-slate-600" />
                                     </div>
                                     
-                                    {showInstallBtn && (
+                                    {!isStandalone && (
                                         <button
                                             onClick={handleInstallClick}
                                             className="w-full py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-all flex justify-center items-center shadow-[0_0_15px_rgba(79,70,229,0.3)] gap-2"
