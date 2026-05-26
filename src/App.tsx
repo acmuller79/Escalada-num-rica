@@ -12,6 +12,15 @@ type LogEntry = {
     type: 'success' | 'error' | 'warning' | 'info';
 };
 
+type HighScore = {
+    id: string;
+    playerName: string;
+    level: number;
+    touches: number;
+    result: 'won' | 'gameover';
+    date: number;
+};
+
 export default function App() {
     const [gameState, setGameState] = useState<GameState>('setup');
     const [board, setBoard] = useState<BoardMap>({});
@@ -21,6 +30,18 @@ export default function App() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [bgImage, setBgImage] = useState<string | null>(() => localStorage.getItem('escalada_bg') || null);
     
+    const [touches, setTouches] = useState(0);
+    const [playerName, setPlayerName] = useState('');
+    const [scoreSaved, setScoreSaved] = useState(false);
+    const [highScores, setHighScores] = useState<HighScore[]>(() => {
+        try {
+            const saved = localStorage.getItem('escalada_scores');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
     // PWA Install Prompt
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isStandalone, setIsStandalone] = useState(false);
@@ -256,6 +277,8 @@ export default function App() {
     };
 
     const generateGame = () => {
+        setTouches(0);
+        setScoreSaved(false);
         let newBoard: BoardMap = {};
 
         for (let level = 1; level <= 10; level++) {
@@ -330,12 +353,105 @@ export default function App() {
         );
     };
 
+    const saveScore = (result: 'won' | 'gameover') => {
+        if (!playerName.trim()) return;
+        const newScore: HighScore = {
+            id: Date.now().toString(),
+            playerName: playerName.trim(),
+            level: currentLevel,
+            touches,
+            result,
+            date: Date.now()
+        };
+        const newScores = [...highScores, newScore].sort((a, b) => {
+            if (a.result === 'won' && b.result !== 'won') return -1;
+            if (a.result !== 'won' && b.result === 'won') return 1;
+            if (a.level !== b.level) return b.level - a.level;
+            return a.touches - b.touches;
+        });
+        setHighScores(newScores);
+        localStorage.setItem('escalada_scores', JSON.stringify(newScores));
+        setScoreSaved(true);
+    };
+
+    const renderLeaderboard = () => {
+        if (highScores.length === 0) return null;
+        return (
+            <div className="mt-8 bg-slate-900/50 p-6 rounded-2xl border border-slate-700/50 text-left overflow-x-auto shadow-inner">
+                <h3 className="text-lg font-black text-slate-100 mb-4 tracking-tight flex items-center gap-2 uppercase">
+                    <Trophy size={18} className="text-yellow-400" />
+                    Classificação
+                </h3>
+                <table className="w-full text-sm text-left">
+                    <thead>
+                        <tr className="text-slate-400 border-b border-slate-700/80">
+                            <th className="pb-3 font-bold uppercase tracking-wider text-xs">#</th>
+                            <th className="pb-3 font-bold uppercase tracking-wider text-xs">Jogador</th>
+                            <th className="pb-3 font-bold uppercase tracking-wider text-xs">Nível</th>
+                            <th className="pb-3 font-bold uppercase tracking-wider text-xs">Toques</th>
+                            <th className="pb-3 font-bold uppercase tracking-wider text-xs">Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {highScores.slice(0, 5).map((score, i) => (
+                            <tr key={score.id} className="border-b border-slate-800/30 text-slate-200 last:border-0 hover:bg-slate-800/20 transition-colors">
+                                <td className="py-3 text-slate-500 font-mono font-bold">{i + 1}</td>
+                                <td className="py-3 font-black text-white">{score.playerName}</td>
+                                <td className="py-3"><span className="bg-indigo-500/20 text-indigo-300 font-bold px-2 py-1 rounded">{score.level}</span></td>
+                                <td className="py-3 font-mono text-slate-300">{score.touches}</td>
+                                <td className="py-3">
+                                    {score.result === 'won' ? (
+                                        <span className="text-emerald-400 font-bold border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 rounded text-[10px] uppercase tracking-widest">Vitória</span>
+                                    ) : (
+                                        <span className="text-rose-400 font-bold border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 rounded text-[10px] uppercase tracking-widest">Derrota</span>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderSaveScore = (result: 'won' | 'gameover') => {
+        if (scoreSaved) return (
+            <div className="text-emerald-400 font-bold mb-8 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                ✓ Pontuação salva no ranking!
+            </div>
+        );
+        
+        return (
+            <div className="mb-8 p-5 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col gap-3 max-w-sm mx-auto shadow-2xl">
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest text-left">Registrar Pontuação</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <input 
+                        type="text" 
+                        maxLength={15}
+                        placeholder="Seu Nome" 
+                        value={playerName}
+                        onChange={e => setPlayerName(e.target.value)}
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 font-bold text-center sm:text-left transition-colors"
+                    />
+                    <button 
+                        onClick={() => saveScore(result)}
+                        disabled={!playerName.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 text-white px-5 py-3 rounded-xl font-black transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] disabled:shadow-none min-w-[100px]"
+                    >
+                        Salvar
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     const handleNumberClick = (num: number) => {
         if (isTransitioning) return;
         const type = board[num];
         
         // Permanent reveal of the cell
         setRevealed(prev => ({ ...prev, [num]: true }));
+        setTouches(prev => prev + 1);
 
         if (type === 'winner') {
             setIsTransitioning(true);
@@ -477,6 +593,8 @@ export default function App() {
                                 </button>
                             )}
 
+                            {renderLeaderboard()}
+
                         </motion.div>
                     )}
 
@@ -496,8 +614,11 @@ export default function App() {
                                     <h2 className="text-2xl sm:text-4xl font-black text-slate-100 tracking-tight">O Painel</h2>
                                     <div className="flex flex-col items-end">
                                         <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Status Atual</span>
-                                        <div className="px-5 py-2 bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 rounded-xl flex items-center gap-2">
+                                        <div className="px-5 py-2 bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 rounded-xl flex items-center gap-2 mb-2">
                                             Nível <span className="text-xl text-white">{currentLevel}</span>
+                                        </div>
+                                        <div className="px-3 py-1 bg-slate-800/80 text-slate-400 font-bold border border-slate-700/50 rounded-lg flex items-center gap-2 text-xs">
+                                            Toques: <span className="text-white text-sm">{touches}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -659,6 +780,9 @@ export default function App() {
                             <p className="text-lg text-yellow-100/70 mb-10">
                                 O número oculto no topo foi finalmente revelado. Excelente escalada!
                             </p>
+                            
+                            {renderSaveScore('won')}
+
                             <button 
                                 onClick={() => { setGameState('setup'); setBoard({}); }} 
                                 className="w-full py-4 rounded-xl text-lg font-bold bg-yellow-500 hover:bg-yellow-400 text-slate-900 shadow-xl transition-all"
@@ -683,6 +807,9 @@ export default function App() {
                             <p className="text-lg text-rose-200/60 mb-10">
                                 Você esgotou todas as suas chances de avanço ou encontrou o abismo fatal sem saída. O caminho está selado.
                             </p>
+                            
+                            {renderSaveScore('gameover')}
+
                             <button 
                                 onClick={() => { setGameState('setup'); setBoard({}); }} 
                                 className="w-full py-4 rounded-xl text-lg font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_20px_rgba(225,29,72,0.4)] transition-all"
