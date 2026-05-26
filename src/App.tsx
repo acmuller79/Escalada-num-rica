@@ -423,14 +423,6 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 via-indigo-500/10 to-teal-500/10 pointer-events-none"></div>
                 
                 <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex items-center justify-center gap-2">
-                    {showInstallBtn && (
-                        <button
-                            onClick={handleInstallClick}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform"
-                        >
-                            Instalar App
-                        </button>
-                    )}
                     <button 
                         onClick={toggleMusic}
                         className="p-2 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all border border-slate-700/50"
@@ -474,6 +466,14 @@ export default function App() {
                                 <Play size={20} /> Iniciar Jogo
                             </button>
 
+                            {showInstallBtn && (
+                                <button
+                                    onClick={handleInstallClick}
+                                    className="w-full mt-4 relative z-10 py-4 rounded-2xl text-sm font-bold bg-slate-800 text-white hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700 hover:border-slate-600"
+                                >
+                                    Instalar App
+                                </button>
+                            )}
 
                         </motion.div>
                     )}
@@ -583,6 +583,16 @@ export default function App() {
                                         <h3 className="uppercase tracking-widest text-slate-500 font-bold text-xs">Controle</h3>
                                         <Trophy size={18} className="text-slate-600" />
                                     </div>
+                                    
+                                    {showInstallBtn && (
+                                        <button
+                                            onClick={handleInstallClick}
+                                            className="w-full py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-all flex justify-center items-center shadow-[0_0_15px_rgba(79,70,229,0.3)] gap-2"
+                                        >
+                                            Instalar App
+                                        </button>
+                                    )}
+
                                     <button 
                                         onClick={() => {
                                             if(window.confirm('Certeza que deseja abortar a escalada? Todo o progresso será perdido!')) {
