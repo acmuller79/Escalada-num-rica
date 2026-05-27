@@ -33,14 +33,14 @@ export default function App() {
     const [touches, setTouches] = useState(0);
     const [playerName, setPlayerName] = useState('');
     const [scoreSaved, setScoreSaved] = useState(false);
-    const [highScores, setHighScores] = useState<HighScore[]>(() => {
-        try {
-            const saved = localStorage.getItem('escalada_scores');
-            return saved ? JSON.parse(saved) : [];
-        } catch {
-            return [];
-        }
-    });
+    const [highScores, setHighScores] = useState<HighScore[]>([]);
+
+    useEffect(() => {
+        fetch('/api/scores')
+            .then(res => res.json())
+            .then(data => setHighScores(data))
+            .catch(err => console.error("Could not fetch scores", err));
+    }, []);
 
     // PWA Install Prompt
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -355,23 +355,27 @@ export default function App() {
 
     const saveScore = (result: 'won' | 'gameover') => {
         if (!playerName.trim()) return;
-        const newScore: HighScore = {
-            id: Date.now().toString(),
+        
+        const newScore = {
             playerName: playerName.trim(),
             level: currentLevel,
             touches,
-            result,
-            date: Date.now()
+            result
         };
-        const newScores = [...highScores, newScore].sort((a, b) => {
-            if (a.result === 'won' && b.result !== 'won') return -1;
-            if (a.result !== 'won' && b.result === 'won') return 1;
-            if (a.level !== b.level) return b.level - a.level;
-            return a.touches - b.touches;
-        });
-        setHighScores(newScores);
-        localStorage.setItem('escalada_scores', JSON.stringify(newScores));
-        setScoreSaved(true);
+
+        fetch('/api/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newScore)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.scores) {
+                setHighScores(data.scores);
+                setScoreSaved(true);
+            }
+        })
+        .catch(err => console.error("Error saving score", err));
     };
 
     const renderLeaderboard = () => {
