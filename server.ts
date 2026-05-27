@@ -8,7 +8,9 @@ const PORT = 3000;
 
 app.use(express.json());
 
-const SCORES_FILE = path.join(process.cwd(), "scores.json");
+const SCORES_FILE = process.env.NODE_ENV === "production" 
+  ? path.join("/tmp", "scores.json") 
+  : path.join(process.cwd(), "scores.json");
 
 // Helper to get scores
 const getScores = () => {

@@ -375,7 +375,10 @@ export default function App() {
                 setScoreSaved(true);
             }
         })
-        .catch(err => console.error("Error saving score", err));
+        .catch(err => {
+            console.error("Error saving score", err);
+            alert("Erro ao salvar: Falha na comunicação com o servidor.");
+        });
     };
 
     const renderLeaderboard = () => {
@@ -794,6 +797,8 @@ export default function App() {
                                 Iniciar Nova Escalada
                             </button>
 
+                            {renderLeaderboard()}
+
                             {renderGabarito()}
                         </motion.div>
                     )}
@@ -821,6 +826,8 @@ export default function App() {
                                 Aceitar a Derrota e Tentar Novamente
                             </button>
                             
+                            {renderLeaderboard()}
+
                             {renderGabarito()}
                         </motion.div>
                     )}
