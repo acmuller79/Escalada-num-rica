@@ -1,0 +1,23 @@
+{
+  "entities": {
+    "Score": {
+      "title": "Score",
+      "description": "A player's ranking in the game",
+      "type": "object",
+      "properties": {
+        "playerName": { "type": "string", "description": "The player's name" },
+        "level": { "type": "number", "description": "Level reached" },
+        "touches": { "type": "number", "description": "Number of touches" },
+        "result": { "type": "string", "enum": ["won", "gameover"] },
+        "date": { "type": "number", "description": "Timestamp in ms" }
+      },
+      "required": ["playerName", "level", "touches", "result", "date"]
+    }
+  },
+  "firestore": {
+    "scores/{scoreId}": {
+      "schema": "Score",
+      "description": "High scores for the leaderboard"
+    }
+  }
+}

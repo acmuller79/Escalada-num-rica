@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Share2, Play, RefreshCw, ArrowUp, ArrowDown, Trophy, X, ChevronRight, Skull, ChevronsDown, Lock, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from './firebase';
+import { collection, addDoc, onSnapshot, query, limit } from 'firebase/firestore';
 
 type CellType = 'advance' | 'fallback' | 'neutral' | 'winner' | 'lose_all' | 'lose_half';
 type BoardMap = Record<number, CellType>;
@@ -36,10 +38,36 @@ export default function App() {
     const [highScores, setHighScores] = useState<HighScore[]>([]);
 
     useEffect(() => {
-        fetch('/api/scores')
-            .then(res => res.json())
-            .then(data => setHighScores(data))
-            .catch(err => console.error("Could not fetch scores", err));
+        const q = query(collection(db, 'scores'), limit(50)); // Fetch up to 50 scores, will sort in memory
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const scores: HighScore[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                scores.push({
+                    id: doc.id,
+                    playerName: data.playerName,
+                    level: data.level,
+                    touches: data.touches,
+                    result: data.result,
+                    date: data.date
+                });
+            });
+
+            // Sort scores: winners first, then highest level, then lowest touches
+            scores.sort((a, b) => {
+                if (a.result === 'won' && b.result !== 'won') return -1;
+                if (a.result !== 'won' && b.result === 'won') return 1;
+                if (a.level !== b.level) return b.level - a.level;
+                return a.touches - b.touches;
+            });
+            
+            setHighScores(scores.slice(0, 100)); // Keep top 100
+        }, (error) => {
+            console.error("Could not fetch scores", error);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     // PWA Install Prompt
@@ -353,32 +381,24 @@ export default function App() {
         );
     };
 
-    const saveScore = (result: 'won' | 'gameover') => {
+    const saveScore = async (result: 'won' | 'gameover') => {
         if (!playerName.trim()) return;
         
         const newScore = {
             playerName: playerName.trim(),
             level: currentLevel,
             touches,
-            result
+            result,
+            date: Date.now()
         };
 
-        fetch('/api/scores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newScore)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success && data.scores) {
-                setHighScores(data.scores);
-                setScoreSaved(true);
-            }
-        })
-        .catch(err => {
+        try {
+            await addDoc(collection(db, 'scores'), newScore);
+            setScoreSaved(true);
+        } catch (err) {
             console.error("Error saving score", err);
             alert("Erro ao salvar: Falha na comunicação com o servidor.");
-        });
+        }
     };
 
     const renderLeaderboard = () => {
