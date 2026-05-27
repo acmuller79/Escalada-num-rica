@@ -35,6 +35,7 @@ export default function App() {
     const [touches, setTouches] = useState(0);
     const [playerName, setPlayerName] = useState('');
     const [scoreSaved, setScoreSaved] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [highScores, setHighScores] = useState<HighScore[]>([]);
 
     useEffect(() => {
@@ -62,7 +63,7 @@ export default function App() {
                 return a.touches - b.touches;
             });
             
-            setHighScores(scores.slice(0, 100)); // Keep top 100
+            setHighScores(scores.slice(0, 10)); // Keep top 10
         }, (error) => {
             console.error("Could not fetch scores", error);
         });
@@ -382,8 +383,9 @@ export default function App() {
     };
 
     const saveScore = async (result: 'won' | 'gameover') => {
-        if (!playerName.trim()) return;
+        if (!playerName.trim() || isSaving) return;
         
+        setIsSaving(true);
         const newScore = {
             playerName: playerName.trim(),
             level: currentLevel,
@@ -398,6 +400,8 @@ export default function App() {
         } catch (err) {
             console.error("Error saving score", err);
             alert("Erro ao salvar: Falha na comunicação com o servidor.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -462,10 +466,10 @@ export default function App() {
                     />
                     <button 
                         onClick={() => saveScore(result)}
-                        disabled={!playerName.trim()}
+                        disabled={!playerName.trim() || isSaving}
                         className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 text-white px-5 py-3 rounded-xl font-black transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] disabled:shadow-none min-w-[100px]"
                     >
-                        Salvar
+                        {isSaving ? 'Salvando...' : 'Salvar'}
                     </button>
                 </div>
             </div>
